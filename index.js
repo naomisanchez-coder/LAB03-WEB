@@ -1,10 +1,20 @@
 const fs = require('fs');
-const zlib = require('zlib');
 
-const readStream = fs.createReadStream('entrada.txt');
-const writeStream = fs.createWriteStream('entrada.txt.gz');
-const gzip = zlib.createGzip();
+const readable = fs.createReadStream('entrada.txt');
+const writable = fs.createWriteStream('copia_controlada.txt');
 
-readStream.pipe(gzip).pipe(writeStream);
+readable.on('data', chunk => {
+  // Si la escritura no puede procesar el fragmento inmediatamente, pausamos la lectura
+  if (!writable.write(chunk)) {
+    console.log('Búfer de escritura lleno. Pausando lectura...');
+    readable.pause();
+  }
+});
 
-writeStream.on('finish', () => console.log('Archivo comprimido exitosamente.'));
+// Cuando el destino libera espacio en memoria, reanudamos la lectura
+writable.on('drain', () => {
+  console.log('Búfer liberado. Reanudando lectura...');
+  readable.resume();
+});
+
+writable.on('finish', () => console.log('Transferencia con control de flujo completada.'));
