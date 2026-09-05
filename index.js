@@ -1,20 +1,18 @@
+const { Transform } = require('stream');
 const fs = require('fs');
 
-const readable = fs.createReadStream('entrada.txt');
-const writable = fs.createWriteStream('copia_controlada.txt');
-
-readable.on('data', chunk => {
-  // Si la escritura no puede procesar el fragmento inmediatamente, pausamos la lectura
-  if (!writable.write(chunk)) {
-    console.log('Búfer de escritura lleno. Pausando lectura...');
-    readable.pause();
+// Se crea el Transform Stream para modificar los datos sobre la marcha
+const transformStream = new Transform({
+  transform(chunk, encoding, callback) {
+    // Convertimos cada fragmento a texto y lo transformamos a mayúsculas
+    callback(null, chunk.toString().toUpperCase());
   }
 });
 
-// Cuando el destino libera espacio en memoria, reanudamos la lectura
-writable.on('drain', () => {
-  console.log('Búfer liberado. Reanudando lectura...');
-  readable.resume();
-});
+const readStream = fs.createReadStream('texto.txt');
+const writeStream = fs.createWriteStream('texto_mayusculas.txt');
 
-writable.on('finish', () => console.log('Transferencia con control de flujo completada.'));
+// Conectamos lectura -> transformación -> escritura mediante pipes
+readStream.pipe(transformStream).pipe(writeStream);
+
+writeStream.on('finish', () => console.log('Conversión a mayúsculas completada exitosamente.'));
